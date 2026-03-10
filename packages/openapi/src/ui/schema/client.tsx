@@ -176,9 +176,52 @@ function SchemaUIProperty({
     </>
   );
   if (variant === 'expand') return child;
+
+  // For nested objects/arrays, add an inline collapsible to expand properties
+  let inlineExpand: ReactNode = null;
+  if (schema.type === 'object' && schema.props.length > 0) {
+    inlineExpand = (
+      <Collapsible className="my-2">
+        <CollapsibleTrigger
+          className={cn(
+            buttonVariants({ color: 'secondary', size: 'sm' }),
+            'group px-3 py-2 data-[state=open]:rounded-b-none',
+          )}
+        >
+          Show Properties
+          <ChevronDown className="size-4 text-fd-muted-foreground group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="-mt-px bg-fd-card px-3 rounded-lg rounded-tl-none border shadow-sm">
+          <ObjectSearch properties={schema.props} />
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  } else if (schema.type === 'array') {
+    const itemSchema = refs[schema.item.$type];
+    if (itemSchema && (itemSchema.type === 'object' && itemSchema.props.length > 0)) {
+      inlineExpand = (
+        <Collapsible className="my-2">
+          <CollapsibleTrigger
+            className={cn(
+              buttonVariants({ color: 'secondary', size: 'sm' }),
+              'group px-3 py-2 data-[state=open]:rounded-b-none',
+            )}
+          >
+            Array Item
+            <ChevronDown className="size-4 text-fd-muted-foreground group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="-mt-px bg-fd-card px-3 rounded-lg rounded-tl-none border shadow-sm">
+            <SchemaUIProperty name="" $type={schema.item.$type} variant="expand" />
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+  }
+
   return (
     <Property name={name} type={type} deprecated={schema.deprecated} {...overrides}>
       {child}
+      {inlineExpand}
     </Property>
   );
 }
