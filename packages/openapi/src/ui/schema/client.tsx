@@ -218,9 +218,16 @@ function SchemaUIProperty({
     }
   } else if ((schema.type === 'or' || schema.type === 'and') && schema.items.length > 0) {
     // For anyOf/oneOf/allOf wrappers (e.g. nullable types), expand inline
-    if (schema.items.length === 1) {
-      // Single variant — check if it resolves to an expandable type
-      const innerSchema = refs[schema.items[0].$type];
+    // Filter to non-primitive items that can be expanded
+    const expandableItems = schema.items.filter((item) => {
+      const s = refs[item.$type];
+      return s && s.type !== 'primitive';
+    });
+
+    if (expandableItems.length === 1) {
+      // Single expandable variant (common for nullable objects)
+      const expandItem = expandableItems[0];
+      const innerSchema = refs[expandItem.$type];
       if (innerSchema?.type === 'object' && innerSchema.props.length > 0) {
         inlineExpand = (
           <Collapsible className="my-2">
@@ -234,13 +241,30 @@ function SchemaUIProperty({
               <ChevronDown className="size-4 text-fd-muted-foreground group-data-[state=open]:rotate-180" />
             </CollapsibleTrigger>
             <CollapsibleContent className="-mt-px bg-fd-card px-3 rounded-lg rounded-tl-none border shadow-sm">
-              <SchemaUIProperty name="" $type={schema.items[0].$type} variant="expand" />
+              <SchemaUIProperty name="" $type={expandItem.$type} variant="expand" />
+            </CollapsibleContent>
+          </Collapsible>
+        );
+      } else if (innerSchema?.type === 'array') {
+        inlineExpand = (
+          <Collapsible className="my-2">
+            <CollapsibleTrigger
+              className={cn(
+                buttonVariants({ color: 'secondary', size: 'sm' }),
+                'group px-3 py-2 data-[state=open]:rounded-b-none',
+              )}
+            >
+              Array Item
+              <ChevronDown className="size-4 text-fd-muted-foreground group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="-mt-px bg-fd-card px-3 rounded-lg rounded-tl-none border shadow-sm">
+              <SchemaUIProperty name="" $type={expandItem.$type} variant="expand" />
             </CollapsibleContent>
           </Collapsible>
         );
       }
-    } else {
-      // Multiple variants — use tabs
+    } else if (expandableItems.length > 1) {
+      // Multiple non-primitive variants — use tabs
       inlineExpand = (
         <Collapsible className="my-2">
           <CollapsibleTrigger
@@ -253,15 +277,15 @@ function SchemaUIProperty({
             <ChevronDown className="size-4 text-fd-muted-foreground group-data-[state=open]:rotate-180" />
           </CollapsibleTrigger>
           <CollapsibleContent className="-mt-px bg-fd-card px-3 rounded-lg rounded-tl-none border shadow-sm">
-            <Tabs defaultValue={schema.items[0].$type}>
+            <Tabs defaultValue={expandableItems[0].$type}>
               <TabsList>
-                {schema.items.map((item) => (
+                {expandableItems.map((item) => (
                   <TabsTrigger key={item.$type} value={item.$type}>
                     {item.name}
                   </TabsTrigger>
                 ))}
               </TabsList>
-              {schema.items.map((item) => (
+              {expandableItems.map((item) => (
                 <TabsContent
                   key={item.$type}
                   value={item.$type}
